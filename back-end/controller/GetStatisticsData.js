@@ -1,88 +1,85 @@
 const Transaction = require('../model/Transaction');
-const { getMonthNumber } = require('../utility/months');
 
 const getStatisticsData = async (req, res) => {
-  const { month, year } = req.query;
+  const { month } = req.query;
 
-  // Validate month and year input
   if (!month) {
     return res.status(400).json({ message: 'Month is required' });
   }
 
-  const monthIndex = getMonthNumber(month);
-  if (monthIndex === null) {
-    return res.status(400).json({ message: 'Invalid month' });
-  }
-
-  // If year is not provided, use the current year
-  const currentYear = new Date().getFullYear();
-  const selectedYear = year || currentYear;
-
   try {
-    // Create date range for the selected month and year
-    const startDate = new Date(selectedYear, monthIndex, 1);
-    const endDate = new Date(selectedYear, monthIndex + 1, 0, 23, 59, 59, 999);
 
-    console.log(`Start Date: ${startDate}, End Date: ${endDate}`);
+    // console.log(month);
 
-    // Fetch transactions within the date range
-    const transactions = await Transaction.find({
-      dateOfSale: {
-        $gte: startDate,
-        $lte: endDate
+    
+        const monthMap = {
+            january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+            july: 7, august: 8, september: 9, october: 10, november: 11, december: 12
+        };
+
+        const numericMonth = monthMap[month.toLowerCase()]; // Convert to lowercase for case-insensitivity
+
+        console.log(numericMonth);
+
+
+    const salesResult = await Transaction.aggregate([
+      {
+          $match: {
+              $expr: { $eq: [{ $month: "$dateOfSale" }, numericMonth] }, // Extract month
+              sold: true // Only sum prices of sold products
+          }
+      },
+      {
+          $group: {
+              _id: null,
+              totalSales: { $sum: "$price" } // Sum prices of matching documents
+          }
       }
+  ]);   
+  
+  const totalSales = salesResult.length > 0 ? salesResult[0].totalSales : 0;
+
+
+  console.log("sales : ",totalSales);
+
+
+    const totalSoldItems = await Transaction.countDocuments({
+      sold:true,
+      $expr:{ $eq:[{$month:"$dateOfSale"},numericMonth]},
+
     });
 
-    // Calculate totals
-    let totalSaleAmount = 0;
-    let totalSoldItems = 0;
-    let totalNotSoldItems = 0;
-    let totalItems = transactions.length;
+    console.log("totalsaleitem",totalSoldItems);
 
-    transactions.forEach(transaction => {
-      totalSaleAmount += transaction.price;
-      if (transaction.sold) {
-        totalSoldItems++;
-      } else {
-        totalNotSoldItems++;
-      }
+    
+
+
+    const totalUnsoldItems = await Transaction.countDocuments({
+      sold:false,
+      $expr:{ $eq:[{$month:"$dateOfSale"},numericMonth]},
+
     });
 
-    // Calculate additional statistics (optional)
-    let averagePrice = totalSaleAmount / totalItems;
-    let medianPrice = calculateMedian(transactions.map(transaction => transaction.price)); // Implement median calculation
+    console.log("unsold items : ",totalUnsoldItems);
 
-    // Construct response
-    const response = {
-      totalSaleAmount,
+    // const statisticsData = {
+    //   totalSales,
+    //   totalSoldItems,
+    //   totalUnsoldItems
+    // }
+
+    // console.log("Statistics : ",statisticsData);
+
+    res.status(200).json({
+      totalSales,
       totalSoldItems,
-      totalNotSoldItems,
-      totalItems,
-      averagePrice, // Optional
-      medianPrice // Optional
-    };
+      totalUnsoldItems,
+    });
 
-    res.json(response);
   } catch (error) {
     console.error('Error fetching statistics:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ message: 'Failed to get statistics', error });
   }
 };
-
-// Helper function to calculate median
-function calculateMedian(prices) {
-  // Sort prices in ascending order
-  prices.sort((a, b) => a - b);
-
-  const middleIndex = Math.floor(prices.length / 2);
-
-  if (prices.length % 2 === 0) {
-    // Even number of elements, calculate average of middle two
-    return (prices[middleIndex - 1] + prices[middleIndex]) / 2;
-  } else {
-    // Odd number of elements, return middle element
-    return prices[middleIndex];
-  }
-}
 
 module.exports = getStatisticsData;

@@ -9,19 +9,20 @@ const getPriceRangeData = async (req, res) => {
         return res.status(400).json({ message: 'Month is required' });
     }
 
-    const monthIndex = getMonthNumber(month);
-    if (monthIndex === null) {
+    console.log("Month index:", month);
+
+    const monthMap = {
+        january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+        july: 7, august: 8, september: 9, october: 10, november: 11, december: 12
+    };
+
+    const numericMonth = monthMap[month.toLowerCase()]; 
+
+    if (!numericMonth) {
         return res.status(400).json({ message: 'Invalid month' });
     }
 
     try {
-        // Create date range for the selected month
-        const year = new Date().getFullYear(); // Get the current year
-        const startDate = new Date(year, monthIndex, 1); // Start of the month
-        const endDate = new Date(year, monthIndex + 1, 1); // Start of the next month
-
-        console.log(`Start Date: ${startDate}, End Date: ${endDate}`); // Log date range for debugging
-
         // Define price ranges
         const priceRanges = [
             { range: '0 - 100', min: 0, max: 100 },
@@ -39,16 +40,14 @@ const getPriceRangeData = async (req, res) => {
         // Count the number of items in each price range
         const results = await Promise.all(priceRanges.map(async (priceRange) => {
             const count = await Transaction.countDocuments({
-                dateOfSale: { $gte: startDate, $lt: endDate }, // Check the date range
-                price: { $gte: priceRange.min, $lt: priceRange.max }, // Check the price range
+                $expr: { $eq: [{ $month: "$dateOfSale" }, numericMonth] },
+                price: { $gte: priceRange.min, $lte: priceRange.max }
             });
             return {
                 range: priceRange.range,
                 count,
             };
         }));
-
-        console.log("Price range data fetched successfully:", results); // Log the results
 
         res.status(200).json(results);
     } catch (error) {

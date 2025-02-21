@@ -28,7 +28,7 @@ const initializeDatabase = async (req, res) => {
         const result = await Transaction.insertMany(transactionData);
 
         // Log the number of transactions inserted
-        console.log(`Inserted ${result.length} transactions into the database.`);
+        // console.log(`Inserted ${result.length} transactions into the database.`);
 
         // Send a success response
         res.status(200).json({ 

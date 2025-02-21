@@ -25,7 +25,7 @@ const getTransactions = async (req, res) => {
 
     try {
         // Log the query for debugging
-        console.log('Query:', JSON.stringify(query));
+        // console.log('Query:', JSON.stringify(query));
         
         const totalCount = await Transaction.countDocuments(query);
         
@@ -35,8 +35,8 @@ const getTransactions = async (req, res) => {
             .sort({ dateOfSale: -1 });
 
         // Log the results for debugging
-        console.log('Total count:', totalCount);
-        console.log('First transaction:', transactions[0]);
+        // console.log('Total count:', totalCount);
+        // console.log('First transaction:', transactions[0]);
 
         return res.json({ 
             totalCount, 
